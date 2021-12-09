@@ -1,6 +1,8 @@
 ﻿using Dapper;
+using Discount.API.Data;
 using Discount.API.Entities;
 using Microsoft.Extensions.Configuration;
+using MongoDB.Driver;
 using Npgsql;
 using System;
 using System.Collections.Generic;
@@ -11,68 +13,45 @@ namespace Discount.API.Repositories
 {
     public class DiscountRepository : IDiscountRepository
     {
-        private readonly IConfiguration _configuration;
+        private readonly IDiscountContext _context;
 
-        public DiscountRepository(IConfiguration configuration)
+        public DiscountRepository(IDiscountContext context)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
         public async Task<Coupon> GetDiscount(string productName)
         {
-            using var connection = new NpgsqlConnection
-                (_configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
-
-            var coupon = await connection.QueryFirstOrDefaultAsync<Coupon>
-                ("SELECT * FROM Coupon WHERE ProductName = @ProductName", new { ProductName = productName });
-
-            if (coupon == null)
-                return new Coupon
-                { ProductName = "No Discount", Amount = 0, Description = "No Discount Desc" };
-
-            return coupon;
+            return await _context
+                           .Coupons
+                           .Find(p => p.ProductName == productName)
+                           .FirstOrDefaultAsync();
         }
 
-        public async Task<bool> CreateDiscount(Coupon coupon)
+        public async Task CreateDiscount(Coupon coupon)
         {
-            using var connection = new NpgsqlConnection
-                (_configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
-
-            var affected =
-                await connection.ExecuteAsync
-                    ("INSERT INTO Coupon (ProductName, Description, Amount) VALUES (@ProductName, @Description, @Amount)",
-                            new { ProductName = coupon.ProductName, Description = coupon.Description, Amount = coupon.Amount });
-
-            if (affected == 0)
-                return false;
-
-            return true;
+            await _context.Coupons.InsertOneAsync(coupon);
         }
 
         public async Task<bool> UpdateDiscount(Coupon coupon)
         {
-            using var connection = new NpgsqlConnection(_configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
+            var updateResult = await _context
+                                        .Coupons
+                                        .ReplaceOneAsync(filter: g => g.Id == coupon.Id, replacement: coupon);
 
-            var affected = await connection.ExecuteAsync
-                    ("UPDATE Coupon SET ProductName=@ProductName, Description = @Description, Amount = @Amount WHERE Id = @Id",
-                            new { ProductName = coupon.ProductName, Description = coupon.Description, Amount = coupon.Amount, Id = coupon.Id });
-
-            if (affected == 0)
-                return false;
-
-            return true;
+            return updateResult.IsAcknowledged
+                    && updateResult.ModifiedCount > 0;
         }
 
         public async Task<bool> DeleteDiscount(string productName)
         {
-            using var connection = new NpgsqlConnection(_configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
+            FilterDefinition<Coupon> filter = Builders<Coupon>.Filter.Eq(p => p.ProductName, productName);
 
-            var affected = await connection.ExecuteAsync("DELETE FROM Coupon WHERE ProductName = @ProductName",
-                new { ProductName = productName });
+            DeleteResult deleteResult = await _context
+                                                .Coupons
+                                                .DeleteOneAsync(filter);
 
-            if (affected == 0)
-                return false;
-
-            return true;
+            return deleteResult.IsAcknowledged
+                && deleteResult.DeletedCount > 0;
         }
     }
 }
