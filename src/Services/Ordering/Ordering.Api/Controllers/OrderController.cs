@@ -7,10 +7,11 @@ using Ordering.Application.Features.Orders.Commands.UpdateOrder;
 using Ordering.Application.Features.Orders.Queries.GetOrdersList;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace Ordering.Api.Controllers
+namespace Ordering.API.Controllers
 {
     [ApiController]
     [Route("api/v1/[controller]")]
@@ -32,6 +33,7 @@ namespace Ordering.Api.Controllers
             return Ok(orders);
         }
 
+        // testing purpose
         [HttpPost(Name = "CheckoutOrder")]
         [ProducesResponseType((int)HttpStatusCode.OK)]
         public async Task<ActionResult<int>> CheckoutOrder([FromBody] CheckoutOrderCommand command)
@@ -60,6 +62,5 @@ namespace Ordering.Api.Controllers
             await _mediator.Send(command);
             return NoContent();
         }
-
     }
 }
