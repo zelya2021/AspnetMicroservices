@@ -37,7 +37,7 @@ namespace Ordering.API.Extensions
                     {
                         retryForAvailability++;
                         System.Threading.Thread.Sleep(2000);
-                        MigrateDatabase<TContext>(host, seeder, retryForAvailability);
+                        MigrateDatabase(host, seeder, retryForAvailability);
                     }
                 }
             }
