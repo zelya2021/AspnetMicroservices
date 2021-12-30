@@ -97,7 +97,7 @@ services:
     container_name: discount.grpc
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - "DatabaseSettings:ConnectionString=mongodb://discountdb:27060"
+      - "DatabaseSettings:ConnectionString=mongodb://discountdb:27060?connect=replicaSet"
     depends_on:
       - discountdb
     ports:
